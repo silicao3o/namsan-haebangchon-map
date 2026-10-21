@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>남산·해방촌 맛집 지도 (10/24)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;display:flex;height:100vh}
+#side{width:330px;overflow-y:auto;border-right:1px solid #ddd;padding:14px;background:#fafafa}
+#wrap{flex:1;position:relative}#map{position:absolute;inset:0}
+h1{font-size:17px;margin:0 0 4px}.sub{font-size:12px;color:#666;margin-bottom:10px;line-height:1.5}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.btns button{border:1px solid #ccc;background:#fff;border-radius:14px;padding:4px 10px;font-size:12px;cursor:pointer}
+.btns button:hover{background:#eee}
+h2{font-size:14px;margin:14px 0 4px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+h2.off{opacity:.4}
+.item{padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;line-height:1.4;display:flex;gap:8px;align-items:flex-start}
+.item:hover{background:#eee}.meta{color:#666;font-size:12px}
+.num{flex:none;min-width:24px;height:24px;padding:0 3px;border-radius:12px;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.lm{background:#222;color:#fff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.leaflet-tooltip.nm{background:rgba(255,255,255,.92);border:0;box-shadow:0 1px 2px rgba(0,0,0,.3);padding:1px 5px;font-size:11px;font-weight:600}
+.leaflet-tooltip.nm:before{display:none}
+.hide-labels .leaflet-tooltip.nm{display:none}
+.hrs{font-size:12px;background:#f3f6ff;border-radius:4px;padding:4px 6px;margin:0 0 6px;line-height:1.5}.warn{color:#c62828;font-size:12px;font-weight:600}
+.pop b{font-size:14px}.pop .meta{margin:3px 0 6px}.pop a{display:inline-block;margin-right:8px;font-size:12px}
+.cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}.cats button{border:0;color:#fff;border-radius:14px;padding:4px 10px;font-size:12px;cursor:pointer}
+.cats button.off{opacity:.35}
+#handle{display:none}
+.clu{width:40px;height:40px;border-radius:50%;background:#333;color:#fff;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1}
+.clu i{display:flex;gap:2px;margin-top:3px}.clu i b{width:6px;height:6px;border-radius:50%}
+/* 모바일: 지도 전체 화면 + 아래에서 올라오는 목록 시트 */
+@media(max-width:700px){
+ body{display:block;height:100vh;height:100dvh;overflow:hidden}
+ #wrap{position:fixed;inset:0}
+ #side{position:fixed;left:0;right:0;bottom:0;width:auto;z-index:1000;border:0;border-radius:16px 16px 0 0;box-shadow:0 -2px 14px rgba(0,0,0,.25);
+   padding:0 14px calc(10px + env(safe-area-inset-bottom));height:var(--peek);transition:height .25s;overflow:hidden;display:flex;flex-direction:column;background:#fff}
+ #side.open{height:75vh;height:75dvh}
+ #handle{display:block;padding:8px 0 6px;text-align:center;cursor:pointer;font-size:12px;color:#555;flex:none}
+ #handle:before{content:'';display:block;width:40px;height:5px;border-radius:3px;background:#ccc;margin:0 auto 6px}
+ h1{font-size:16px}
+ .sub{display:none}#side.open .sub{display:block}
+ #list{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;min-height:0}
+ .btns button,.cats button{padding:7px 12px;font-size:13px}
+ .item{padding:10px 4px}
+ .leaflet-popup-content{margin:10px 12px}
+ .lm{font-size:10px;padding:2px 5px}
+}
+</style></head><body>
+<div id="side">
+<div id="handle">목록 펼치기 ▲</div>
+<h1>남산·해방촌 맛집 지도</h1>
+<div class="sub">2026.10.24(토) · 다이닝코드 평점 4.0↑ · 2026년 리뷰 있음 · 리뷰 5개↑ (10/21 기준)<br>🕒 영업시간은 10/24(토) 기준 다이닝코드 정보, 임시휴무는 전날 다시 확인하세요.<br>카테고리 제목을 누르면 켜고 끌 수 있어요.</div>
+<div class="btns"><button data-v="hbc">해방촌 보기</button><button data-v="cable">케이블카·회현 보기</button><button data-v="all">전체 보기</button></div>
+<div class="cats" id="cats"></div>
+<div id="list"></div>
+</div>
+<div id="wrap"><div id="map"></div></div>
+<script>
+const GROUPS=[{"id": "meal", "name": "해방촌 식사", "color": "#e4572e"}, {"id": "dessert", "name": "해방촌 디저트·카페", "color": "#d63384"}, {"id": "dinner", "name": "케이블카 근처 (회현·남산)", "color": "#1f77b4"}], PLACES=[{"g": "meal", "name": "보니스피자펍", "menu": "미국식 피자", "rating": 4.3, "cnt": 105, "latest": "2026-07-26", "lat": 37.5411581, "lng": 126.9869757, "rid": "Px6mehr2YmS3", "addr": "서울특별시 용산구 용산동2가 44-19", "sat": "11:30 - 21:30", "off": "월요일 휴무", "warn": ""}, {"g": "meal", "name": "팟카파우", "menu": "태국 음식 (신흥시장 2층)", "rating": 4.6, "cnt": 28, "latest": "2026-09-15", "lat": 37.5451846, "lng": 126.9849107, "rid": "QM328G3y0GIB", "addr": "서울특별시 용산구 용산동2가 1-510 신흥시장안 2층", "sat": "12:00 - 21:00 · 브레이크 15:00 - 17:00 · L.O 14:30", "off": "월요일 휴무", "warn": ""}, {"g": "meal", "name": "타코스탠드", "menu": "타코", "rating": 4.6, "cnt": 30, "latest": "2026-06-20", "lat": 37.5414162, "lng": 126.9872426, "rid": "iSEAOnqp6av1", "addr": "서울특별시 용산구 용산동2가 45-9", "sat": "13:00 - 22:00 · L.O 21:00", "off": "", "warn": ""}, {"g": "meal", "name": "자코비버거", "menu": "수제버거", "rating": 4.3, "cnt": 30, "latest": "2026-08-20", "lat": 37.5417856, "lng": 126.987387, "rid": "hXiwcQCnA8yJ", "addr": "서울특별시 용산구 용산동2가 45-6", "sat": "11:00 - 01:00 · L.O 00:00", "off": "", "warn": ""}, {"g": "meal", "name": "해방식당", "menu": "퓨전 한식", "rating": 4.2, "cnt": 37, "latest": "2026-08-15", "lat": 37.5456653, "lng": 126.9846296, "rid": "clZ4KHsiI7Sj", "addr": "서울특별시 용산구 용산동2가 1-555 1층 해방식당", "sat": "11:30 - 21:40 · 브레이크 15:40 - 17:00 · L.O 14:40, 20:40", "off": "", "warn": ""}, {"g": "meal", "name": "세몰리나클럽", "menu": "생면 파스타", "rating": 4.7, "cnt": 11, "latest": "2026-06-02", "lat": 37.5437184, "lng": 126.9873007, "rid": "cVp9XUu9FRU8", "addr": "서울특별시 용산구 용산동2가 22-12", "sat": "14:00 - 22:30 · L.O 21:30", "off": "", "warn": "14시 오픈"}, {"g": "meal", "name": "잠수교집 해방촌 직영점", "menu": "냉삼", "rating": 4.5, "cnt": 30, "latest": "2026-02-18", "lat": 37.5417983, "lng": 126.9871889, "rid": "KWSwzUMDSwuT", "addr": "서울특별시 용산구 용산동2가 39-17", "sat": "12:00 - 02:00", "off": "", "warn": ""}, {"g": "meal", "name": "노스트레스버거", "menu": "치즈버거", "rating": 4.3, "cnt": 17, "latest": "2026-08-25", "lat": 37.543914753030336, "lng": 126.98730972154536, "rid": "G7JpljlGnJRz", "addr": "서울특별시 용산구 용산동2가 24-17", "sat": "12:00 - 20:30 · L.O 20:00", "off": "", "warn": ""}, {"g": "meal", "name": "빌라드블루", "menu": "라자냐·양식", "rating": 4.2, "cnt": 16, "latest": "2026-10-01", "lat": 37.541245953030334, "lng": 126.98705902154535, "rid": "qdQi1ytFk1aa", "addr": "서울특별시 용산구 용산동2가 45-13 1층", "sat": "12:00 - 23:00 · 브레이크 15:30 - 17:00", "off": "", "warn": ""}, {"g": "meal", "name": "해방촌닭", "menu": "한방통닭", "rating": 4.3, "cnt": 15, "latest": "2026-08-17", "lat": 37.54531235303033, "lng": 126.98486092154535, "rid": "uXI9ojyL120U", "addr": "서울특별시 용산구 용산동2가 1-508 신흥시장", "sat": "13:00 - 23:00 · L.O 21:30", "off": "", "warn": ""}, {"g": "dessert", "name": "르몽블랑", "menu": "디저트·루프탑", "rating": 4.0, "cnt": 35, "latest": "2026-08-31", "lat": 37.5449235, "lng": 126.9848503, "rid": "bVcAdwnABoaU", "addr": "서울특별시 용산구 용산동2가 1-91", "sat": "12:00 - 20:00 · L.O 19:30", "off": "", "warn": ""}, {"g": "dessert", "name": "오잇", "menu": "남산타워 뷰 루프탑", "rating": 4.1, "cnt": 34, "latest": "2026-09-11", "lat": 37.5455288, "lng": 126.9850434, "rid": "vuaPTcpI3tmg", "addr": "서울특별시 용산구 용산동2가 1-471", "sat": "12:00 - 22:00", "off": "", "warn": ""}, {"g": "dessert", "name": "오파토", "menu": "소금빵·브런치", "rating": 4.6, "cnt": 27, "latest": "2026-06-07", "lat": 37.5433502, "lng": 126.9879735, "rid": "eYefSHmzpSCj", "addr": "서울특별시 용산구 용산동2가 45", "sat": "08:00 - 16:30 · L.O 16:00", "off": "", "warn": "16:30 마감 · 오전/점심만"}, {"g": "dessert", "name": "코타티", "menu": "젤라또·소르베", "rating": 4.2, "cnt": 19, "latest": "2026-05-13", "lat": 37.543468, "lng": 126.9881802, "rid": "seV1GYh1jXVQ", "addr": "서울시 용산구 용산동2가 26-6", "sat": "12:00 - 23:00", "off": "월요일 휴무", "warn": ""}, {"g": "dessert", "name": "토터스", "menu": "수플레", "rating": 4.2, "cnt": 15, "latest": "2026-09-06", "lat": 37.5453261, "lng": 126.9861001, "rid": "ZqWF9BzFVAQU", "addr": "서울특별시 용산구 용산동2가 18-3 1층", "sat": "12:00 - 21:20", "off": "", "warn": ""}, {"g": "dessert", "name": "바이두부", "menu": "비건 베이커리", "rating": 4.5, "cnt": 15, "latest": "2026-07-23", "lat": 37.5461343, "lng": 126.9852528, "rid": "SvRBrH6GnTXg", "addr": "서울특별시 용산구 용산동2가 1-467", "sat": "09:00 - 16:00 · L.O 15:30", "off": "화요일 휴무", "warn": "16:00 마감 · 오전/점심만"}, {"g": "dessert", "name": "빌라커피바", "menu": "바스크 치즈케이크", "rating": 4.0, "cnt": 13, "latest": "2026-08-01", "lat": 37.5447068, "lng": 126.9849111, "rid": "7uS9AmB62qFT", "addr": "서울특별시 용산구 용산동2가 1-85 2층", "sat": "11:00 - 21:00", "off": "", "warn": ""}, {"g": "dessert", "name": "업스탠딩", "menu": "호주식 커피", "rating": 4.3, "cnt": 11, "latest": "2026-10-02", "lat": 37.54505505303033, "lng": 126.98489732154535, "rid": "c6vfYt0ptm60", "addr": "서울특별시 용산구 용산동2가 1-90", "sat": "10:30 - 19:00", "off": "", "warn": ""}, {"g": "dessert", "name": "꾸에바 마테라", "menu": "이색 카페", "rating": 4.7, "cnt": 10, "latest": "2026-06-01", "lat": 37.5452784, "lng": 126.9852144, "rid": "Vew3Fg7QC9PP", "addr": "서울특별시 용산구 용산동2가 1-46", "sat": "10:30 - 20:00", "off": "", "warn": ""}, {"g": "dessert", "name": "콤포타블 남산", "menu": "뷰 카페 (후암동, 이동 중 경유)", "rating": 4.4, "cnt": 25, "latest": "2026-08-08", "lat": 37.54932, "lng": 126.9834248, "rid": "UKFkBRbpjGWH", "addr": "서울 용산구 후암동 358-17 대원정사 별관 4층", "sat": "10:00 - 22:00 · L.O 21:30", "off": "", "warn": ""}, {"g": "dinner", "name": "가메골 손만두", "menu": "김치만두 (남대문시장)", "rating": 4.3, "cnt": 99, "latest": "2026-09-29", "lat": 37.5584236, "lng": 126.9771357, "rid": "FhvabHrGIGu0", "addr": "서울특별시 중구 남창동 60-2", "sat": "08:20 - 19:30", "off": "일요일 휴무", "warn": ""}, {"g": "dinner", "name": "중앙갈치식당", "menu": "갈치조림 (남대문시장)", "rating": 4.4, "cnt": 42, "latest": "2026-09-22", "lat": 37.5597919, "lng": 126.9770794, "rid": "FXzmLlbo1mRP", "addr": "서울특별시 중구 남창동 34-37", "sat": "10:00 - 21:00 · L.O 20:30", "off": "", "warn": ""}, {"g": "dinner", "name": "유가", "menu": "짜장면·볶음짬뽕", "rating": 4.3, "cnt": 24, "latest": "2026-09-06", "lat": 37.5566901, "lng": 126.9814671, "rid": "zNG2gMuhfRfi", "addr": "서울특별시 중구 회현동1가 117-5", "sat": "11:00 - 20:00 · 브레이크 14:20 - 17:00 · L.O 19:20", "off": "일요일 휴무", "warn": ""}, {"g": "dinner", "name": "어쩌다농부 남대문점", "menu": "나물 한식", "rating": 4.7, "cnt": 16, "latest": "2026-10-08", "lat": 37.5573991, "lng": 126.977608, "rid": "kmvPKZnoJQ3u", "addr": "서울특별시 중구 남창동 205-24", "sat": "11:00 - 14:50 · L.O 14:20", "off": "일요일 휴무", "warn": "토요일 14:50 마감 · 저녁 불가"}, {"g": "dinner", "name": "계단집", "menu": "회현 카페", "rating": 4.4, "cnt": 11, "latest": "2026-09-29", "lat": 37.5569522, "lng": 126.9792532, "rid": "WN4JxSt4Vgs7", "addr": "서울 중구 회현동1가 150-1", "sat": "10:00 - 20:00", "off": "월요일 휴무", "warn": ""}, {"g": "dinner", "name": "젤라떼리아 징코", "menu": "젤라또", "rating": 4.5, "cnt": 9, "latest": "2026-07-31", "lat": 37.5578839, "lng": 126.9811632, "rid": "X49eZ097JRzm", "addr": "서울특별시 중구 회현동1가 76-5", "sat": "12:00 - 21:00 · L.O 20:50", "off": "", "warn": ""}], LANDMARKS=[{"name": "남산케이블카 승강장 (탑승)", "lat": 37.5566855, "lng": 126.9841189, "note": "10:00~23:00 · 대인 왕복 15,000원 / 편도 12,000원<br>토요일 저녁 웨이팅 김, 17시 전 줄서기 추천"}, {"name": "케이블카 상부 승강장", "lat": 37.5524446, "lng": 126.9873583, "note": "내려서 N서울타워까지 도보 몇 분"}, {"name": "N서울타워", "lat": 37.551169, "lng": 126.988227, "note": "일몰 약 17:45"}];
+const map=L.map('map');
+// 모바일 시트 열고 닫기
+const side=document.getElementById('side'),handle=document.getElementById('handle');
+const isMobile=()=>matchMedia('(max-width:700px)').matches;
+function setPeek(){side.style.setProperty('--peek',(handle.offsetHeight+side.querySelector('h1').offsetHeight+side.querySelector('.btns').offsetHeight+document.getElementById('cats').offsetHeight+22)+'px')}
+function setSheet(open){if(!isMobile())return;side.classList.toggle('open',open);handle.textContent=open?'목록 접기 ▼':'목록 펼치기 ▲'}
+handle.onclick=()=>setSheet(!side.classList.contains('open'));
+map.on('popupopen',()=>setSheet(false));
+// 모바일에선 아래 시트에 가리지 않게 여백을 줌
+const pad=()=>isMobile()?{paddingTopLeft:[30,30],paddingBottomRight:[30,side.offsetHeight+30]}:{padding:[40,40]};
+// 로컬 파일(file://)로 열면 일부 타일 서버가 403을 줘서, 오류가 나면 다음 서버로 바꿈
+const TILES=[
+  ['https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',{maxZoom:19,subdomains:'abc',attribution:'&copy; OpenStreetMap, Tiles: OSM France'}],
+  ['https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}],
+  ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,maxNativeZoom:16,attribution:'Tiles &copy; Esri'}]];
+let tileIdx=0,tileLayer;
+function useTiles(i){
+  if(tileLayer)map.removeLayer(tileLayer);
+  let errs=0;
+  tileLayer=L.tileLayer(...TILES[i]).on('tileerror',()=>{if(++errs===3&&tileIdx<TILES.length-1)useTiles(++tileIdx)}).addTo(map);
+}
+useTiles(0);
+const q=s=>encodeURIComponent(s), layers={}, all=[];
+// 가까이 붙은 핀은 'N곳' 묶음으로 보여주고, 누르면 확대해서 풀어줌 (18레벨부터는 전부 낱개)
+const cluster=L.markerClusterGroup({maxClusterRadius:30,disableClusteringAtZoom:18,showCoverageOnHover:false,spiderfyOnMaxZoom:false,
+  iconCreateFunction:c=>{const cols=[...new Set(c.getAllChildMarkers().map(m=>m.options.color))];
+    return L.divIcon({className:'',html:`<div class="clu">${c.getChildCount()}곳<i>${cols.map(x=>`<b style="background:${x}"></b>`).join('')}</i></div>`,iconSize:[40,40],iconAnchor:[20,20]})}}).addTo(map);
+const icon=(n,c)=>L.divIcon({className:'',html:`<div class="num" style="background:${c}">${n}</div>`,iconSize:[28,24],iconAnchor:[14,12],popupAnchor:[0,-10]});
+function popup(p){return `<div class="pop"><b>${p.name}</b><div class="meta">★ ${p.rating.toFixed(1)} (리뷰 ${p.cnt}) · 최근 리뷰 ${p.latest}<br>${p.menu}<br>${p.addr}</div><div class="hrs">🕒 10/24(토) ${p.sat}${p.off?'<br>'+p.off:''}${p.warn?'<br><span class="warn">⚠️ '+p.warn+'</span>':''}</div>
+<a href="https://www.diningcode.com/profile.php?rid=${p.rid}" target="_blank">다이닝코드</a><a href="https://map.naver.com/p/search/${q(p.name)}" target="_blank">네이버지도</a><a href="https://map.kakao.com/?q=${q(p.name)}" target="_blank">카카오맵</a></div>`}
+const list=document.getElementById('list');
+GROUPS.forEach((g,gi)=>{
+  const prefix=['A','B','C'][gi];
+  layers[g.id]={on:true,markers:[]};
+  const h=document.createElement('h2');h.innerHTML=`<span class="num" style="background:${g.color};min-width:14px;width:14px;height:14px;padding:0;border:0"></span>${g.name}`;
+  const chip=document.createElement('button');chip.textContent=g.name.replace('해방촌 ','').replace(' (회현·남산)','');chip.style.background=g.color;
+  const toggle=()=>{const L_=layers[g.id],on=!L_.on;L_.on=on;on?cluster.addLayers(L_.markers):cluster.removeLayers(L_.markers);h.classList.toggle('off',!on);chip.classList.toggle('off',!on)};
+  h.onclick=chip.onclick=toggle;h.toggle=toggle;
+  document.getElementById('cats').appendChild(chip);
+  list.appendChild(h);
+  PLACES.filter(p=>p.g===g.id).forEach((p,i)=>{
+    const n=prefix+(i+1);
+    const m=L.marker([p.lat,p.lng],{icon:icon(n,g.color)}).bindPopup(popup(p),{maxWidth:280,autoPanPaddingTopLeft:[10,10],autoPanPaddingBottomRight:[10,isMobile()?side.offsetHeight+10:10]})
+      .bindTooltip(p.name,{permanent:true,direction:'right',offset:[10,0],className:'nm'});
+    m.options.color=g.color;layers[g.id].markers.push(m);cluster.addLayer(m);all.push([p.lat,p.lng]);
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML=`<span class="num" style="background:${g.color}">${n}</span><div><b>${p.name}</b> <span class="meta">★${p.rating.toFixed(1)} (${p.cnt})</span><br><span class="meta">${p.menu}</span><br><span class="meta">🕒 토 ${p.sat.split(' · ')[0]}</span>${p.warn?'<br><span class="warn">⚠️ '+p.warn+'</span>':''}</div>`;
+    d.onclick=()=>{if(!layers[g.id].on)h.toggle();setSheet(false);map.setView([p.lat,p.lng],18,{animate:false});m.openPopup()};
+    list.appendChild(d);
+  });
+});
+LANDMARKS.forEach(l=>{
+  L.marker([l.lat,l.lng],{icon:L.divIcon({className:'',html:`<div class="lm">🚡 ${l.name}</div>`,iconSize:null,iconAnchor:[0,10]})})
+   .bindPopup(`<div class="pop"><b>${l.name}</b><div class="meta">${l.note}</div><a href="https://map.naver.com/p/search/${q(l.name.replace(/ \(.*\)/,''))}" target="_blank">네이버지도</a><a href="https://map.kakao.com/?q=${q(l.name.replace(/ \(.*\)/,''))}" target="_blank">카카오맵</a></div>`).addTo(map);
+  all.push([l.lat,l.lng]);
+});
+const views={
+  hbc:()=>map.fitBounds(PLACES.filter(p=>p.g!=='dinner').map(p=>[p.lat,p.lng]),pad()),
+  cable:()=>map.fitBounds(PLACES.filter(p=>p.g==='dinner').map(p=>[p.lat,p.lng]).concat(LANDMARKS.map(l=>[l.lat,l.lng])),pad()),
+  all:()=>map.fitBounds(all,pad())};
+document.querySelectorAll('.btns button').forEach(b=>b.onclick=()=>{setSheet(false);views[b.dataset.v]()});
+// 축소하면 이름표가 겹치니 18레벨 미만에서는 숨김
+const wrap=document.getElementById('wrap');
+const syncLabels=()=>wrap.classList.toggle('hide-labels',map.getZoom()<18);
+map.on('zoomend',syncLabels);
+setPeek();addEventListener('resize',()=>{setPeek();map.invalidateSize()});
+views.hbc();syncLabels();
+</script></body></html>
